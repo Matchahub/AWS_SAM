@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+
+Resources:
+  ApiGateway:
+    Type: 'AWS::Serverless::Api'
+    Properties:
+      StageName: 'prod'
+      Auth:
+        # Disabling authorization
+        DefaultAuthorizer: NONE
+        AddDefaultAuthorizerToCorsPreflight: false
+
+  DynamoDbTable:
+    Type: 'AWS::Serverless::SimpleTable'
+    Properties:
+      TableName: SoilMoistureData
+      PrimaryKey:
+        Name: id
+        Type: String
+      
+  LambdaWrite:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: 'write.handler'
+      Runtime: 'nodejs16.x'
+      CodeUri: functionWrite/
+      Events:
+        ApiGatewayEvent:
+          Type: 'Api'
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: '/write'
+            Method: 'post'
+      Policies:
+        DynamoDBWritePolicy:
+          TableName: !Ref DynamoDbTable
+  LambdaRead:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: 'read.handler'
+      Runtime: 'nodejs16.x'
+      CodeUri: functionRead/
+      Events:
+        ApiGatewayEvent:
+          Type: 'Api'
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: '/read'
+            Method: 'get'
+      Policies:
+        DynamoDBWritePolicy:
+          TableName: !Ref DynamoDbTable
